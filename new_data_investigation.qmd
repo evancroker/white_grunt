@@ -1,0 +1,78 @@
+---
+title: "new_data_investigation"
+format: html
+---
+
+How does there diet change from juvenile to mature? 
+
+Library 
+```{r}
+library(here)
+library(janitor)
+library(tidyverse)
+library(ggplot2)
+```
+
+Load data 
+```{r}
+otolith <- read_csv(here::here("data", "WG_Otolith_Data.csv")) %>% 
+  janitor::clean_names() %>% 
+  rename(id_number = number)
+
+stomachs <- read_csv(here::here("data", "White_Grunt Stomachs.csv")) %>% 
+  janitor::clean_names()
+
+morph <- read_csv(here::here("data", "wg_morph_data.csv")) %>% 
+  janitor::clean_names()
+```
+
+Remove extras from otolith and 
+```{r}
+# Remove extra characters 
+otolith$id_number <- sub("/.*| .*", "", otolith$id_number)
+otolith$id_number 
+
+otolith$id_number <- as.numeric(otolith$id_number, na.rm = TRUE) # Change types 
+```
+
+Wrangle the data
+```{r}
+# Join data
+merged_data <- morph %>%
+  left_join(stomachs, by = "id_number") %>%
+  left_join(otolith, by = "id_number")
+
+
+# only include stomach that are not empty 
+merged_data <- merged_data %>% 
+  filter(is.na(empty))
+
+colnames(merged_data)
+
+# Select necessary columns 
+merged_data %>% 
+  select(id_number, gender, gonads, crab, shrimp, sediment_rocks, shells, invert_parts, plants_aglae, unknown_mush, fish, eggs, brittle_star, other)
+
+```
+
+Catgeoical Contents of Stomach Findings (%)
+```{r}
+ 
+```
+
+Diet composition as diet progressives 
+```{r}
+
+```
+
+Sexual Maturity (gavity) -> dietary preferences 
+```{r}
+
+```
+
+Gender -> deiart preference 
+Portional bar chart 
+```{r}
+
+```
+
