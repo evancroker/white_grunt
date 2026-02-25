@@ -2,19 +2,22 @@
 title: "data_investigation"
 format: html
 ---
-# Investigating White Grunt Data 
 
-## Load in libraries and data 
+# Investigating White Grunt Data
+
+## Load in libraries and data
 
 Load necessary libraries
+
 ```{r}
 library(here)
 library(janitor)
 library(tidyverse)
 library(ggplot2)
-```
 
-Load the data 
+
+Load the data
+
 ```{r}
 grunt1 <- read_csv(here::here("data", "wg_stomachs.csv")) %>% 
   clean_names()
@@ -23,7 +26,6 @@ grunt1 <- read_csv(here::here("data", "wg_stomachs.csv")) %>%
 ```{r}
 class(grunt1$sediment_rocks)
 ```
-
 
 ```{r}
 content <- grunt1 %>% 
@@ -58,4 +60,3 @@ ggplot(df, aes(x = "", y = sums, fill = org)) +
     scale_fill_manual(values = c("#d92139","#e5e848", "#48a5e8","#405c82","#6b6656", "#3C8D53","#e8b527","#48dbe8","#fa98e0"))
 
 ```
-

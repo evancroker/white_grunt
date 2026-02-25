@@ -80,4 +80,86 @@ Looking a the mean percentages for each column
 colMeans(white_grunt_df[, 5:12], na.rm = TRUE)
 ```
 
+###Isolate the smallest and largest fish
+library(dplyr)
+
+# Smallest TL fish
+smallest_fish <- grunts %>%
+  filter(!is.na(tl_cm)) %>%
+  slice_min(order_by = tl_cm, n = 1, with_ties = TRUE)
+
+# Largest TL fish 
+largest_fish <- grunts %>%
+  filter(!is.na(tl_cm)) %>%
+  slice_max(order_by = tl_cm, n = 1, with_ties = TRUE)
+
+smallest_fish
+largest_fish
+
+###Error in the data entry...second smallest fish needs to be identified
+library(dplyr)
+
+second_smallest_fish <- grunts %>%
+  filter(!is.na(tl_cm)) %>%
+  distinct(tl_cm, .keep_all = TRUE) %>%  # keep unique TL values
+  arrange(tl_cm) %>%
+  slice(2)
+
+second_smallest_fish
+
+###Create pie chart with stomach content proportions
+
+ggplot(diet_df, aes(x = "", y = proportion, fill = prey)) +
+  geom_bar(stat = "identity", width = 1, color = "black") +
+  coord_polar("y") +
+  labs(
+    title = "Dietary Composition of White Grunt",
+    fill = "Prey Category"
+  ) +
+  theme_void()
+
+colMeans(white_grunt_df[, 5:12], na.rm = TRUE)
+
+
+diet_means <- colMeans(white_grunt_df[, 5:12], na.rm = TRUE)
+
+
+diet_df <- data.frame(
+  prey = names(diet_means),
+  proportion = diet_means
+)
+
+
+diet_df$percent <- diet_df$proportion * 100
+
+library(ggplot2)
+
+ggplot(diet_df, aes(x = "", y = percent, fill = prey)) +
+  geom_bar(stat = "identity", width = 1, color = "black") +
+  coord_polar("y") +
+  geom_text(
+    aes(label = paste0(round(percent, 1), "%")),
+    position = position_stack(vjust = 0.5),
+    size = 4
+  ) +
+  labs(
+    title = "Dietary Composition of White Grunt",
+    fill = "Prey Category"
+  ) +
+  theme_void()
+
+diet_means <- colMeans(
+  white_grunt_df %>% select(-unknown_mush) %>% select(5:12),
+  na.rm = TRUE
+)
+
+
+
+diet_df <- data.frame(
+  prey = names(diet_means),
+  percent = diet_means * 100
+)
+
+###Read otolith data
+otolith_data <- read.csv("WG_Otolith_Data.csv")
 
