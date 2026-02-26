@@ -254,17 +254,19 @@ Portional bar chart
 # Fix columsn 
 unique(merged_data$gender)
 
+# Named vector of patterns and replacements
+replacements_map <- c("na" = NA, "NA" = NA, "femlae" = "female", "female" = "Female", "male" = "Male")
+
+# Replace all gender misspelled 
+merged_data$gender <- str_replace_all(merged_data$gender, replacements_map)
+
+unique(merged_data$gender) # All fixed! 
 
 
-# New column: `gravid` as factor with 0 = No gonads, 1 = gonads
-
-merged_data$gender <- factor(merged_data$gender, labels = c("female", "male"))
-
-unique(merged_data$gender)
 
 # Wrangle 
-diet_gonads <- merged_data %>% 
-  group_by(gravid) %>% 
+diet_gender <- merged_data %>% 
+  group_by(gender) %>% 
   summarise(crab = sum(crab, na.rm = TRUE), 
             shrimp = sum(shrimp, na.rm = TRUE), 
             sediment_rocks = sum(sediment_rocks, na.rm = TRUE),
@@ -281,17 +283,18 @@ diet_gonads <- merged_data %>%
 
 
 # Portional stack Bar chart 
-diet_gonads %>% 
+diet_gender %>% 
+  # Filter(! gender == NA) %>% # Remove NAs
   ggplot() + 
-  geom_col(aes(x = gravid, y = measurements, fill = diet), 
-           position = "fill", width = 0.8) + 
+  geom_col(aes(x = gender, y = measurements, fill = diet), 
+           position = "fill", width = 0.8) +
   scale_fill_manual(values = color_pal, 
                     labels = c('Brittle Star', 'Crab', 'Eggs', 'Fish', 'Invert Parts', 'Plant','Sediment', 'Shells', 'Shrimp')) + 
   theme_minimal() + 
-  labs(x = "Gravid", 
+  labs(x = "Gender", 
        y = "Deit Composition", 
        fill = "Diet", 
-       title = "Gavid vs Deit Composition") 
+       title = "Gender vs Deit Composition") 
 
 ```
 
