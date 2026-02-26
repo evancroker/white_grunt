@@ -53,15 +53,64 @@ colnames(merged_data)
 merged_data %>% 
   select(id_number, gender, gonads, crab, shrimp, sediment_rocks, shells, invert_parts, plants_aglae, unknown_mush, fish, eggs, brittle_star, other)
 
+
+# ------ WRANGLE -------- 
+# Change column type 
+merged_data$invert_parts <- as.numeric(merged_data$invert_parts)
+merged_data$fish <- as.numeric(merged_data$fish)
+
 ```
+
 
 Catgeoical Contents of Stomach Findings (%)
 ```{r}
- 
+# Wrangle - select and pivot data 
+diets_df <- merged_data %>% 
+  select(crab:brittle_star) %>% 
+  select(-c(unknown_mush)) %>% 
+  pivot_longer(cols = crab:brittle_star, 
+               names_to = 'diet', 
+               values_to = 'measurements')
+
+# Pie plot 
+diets_df %>% 
+  group_by(diet) %>% 
+  summarise(total_weight = sum(measurements, na.rm = TRUE)) %>% 
+  # Plot 
+  ggplot() + 
+  geom_col(aes(x = "", y = total_weight, fill = diet), 
+           color = "white") + 
+  coord_polar(theta = "y") +
+  theme_void() +
+  scale_fill_manual(values = c("grey70", "#FF6B6B","#FFD93D","#FAEAA8", "#6BCB77", "#059316", "#4D96FF","#48dbe8", "#FFB4B4"), 
+                    labels = c('Brittle Star', 'Crab', 'Eggs', 'Fish', 'Invert Parts', 'Plant','Sediment', 'Shells', 'Shrimp')) +
+  labs(title = "Diet Composition", 
+       fill = "Diet") + 
+  theme(plot.title = element_text(size = 16, face = "bold"))
+
+
 ```
 
 Diet composition as diet progressives 
 ```{r}
+# Wrangle 
+diet_age_df <- merged_data %>% 
+  group_by(final_age) %>% 
+  summarise(crab = sum(crab, na.rm = TRUE), 
+            shrimp = sum(shrimp, na.rm = TRUE), 
+            sediment_rocks = sum(sediment_rocks, na.rm = TRUE),
+            invert_parts = sum(invert_parts, na.rm = TRUE),
+            plants_aglae = sum(plants_aglae, na.rm = TRUE), 
+            fish = sum(fish, na.rm = TRUE),
+            eggs = sum(eggs, na.rm = TRUE),
+            brittle_star = sum(brittle_star, na.rm = TRUE), 
+            .groups = "drop") %>% 
+  pivot_longer(cols = crab:brittle_star, 
+               names_to = 'diet', 
+               values_to = 'measurements') %>% 
+  filter(!final_age == "NA") # Do not include any fish were age = NA 
+  
+
 
 ```
 
