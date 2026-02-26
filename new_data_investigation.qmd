@@ -1,0 +1,300 @@
+---
+title: "new_data_investigation"
+format: html
+---
+
+How does there diet change from juvenile to mature? 
+
+Library 
+```{r}
+library(here)
+library(janitor)
+library(tidyverse)
+library(ggplot2)
+library(patchwork)
+```
+
+Load data 
+```{r}
+otolith <- read_csv(here::here("data", "WG_Otolith_Data.csv")) %>% 
+  janitor::clean_names() %>% 
+  rename(id_number = number)
+
+stomachs <- read_csv(here::here("data", "White_Grunt Stomachs.csv")) %>% 
+  janitor::clean_names()
+
+morph <- read_csv(here::here("data", "wg_morph_data.csv")) %>% 
+  janitor::clean_names()
+```
+
+Remove extras from otolith and 
+```{r}
+# Remove extra characters 
+otolith$id_number <- sub("/.*| .*", "", otolith$id_number)
+otolith$id_number 
+
+otolith$id_number <- as.numeric(otolith$id_number, na.rm = TRUE) # Change types 
+```
+
+Wrangle the data
+```{r}
+# Join data
+merged_data <- morph %>%
+  left_join(stomachs, by = "id_number") %>%
+  left_join(otolith, by = "id_number")
+
+
+# only include stomach that are not empty 
+merged_data <- merged_data %>% 
+  filter(is.na(empty))
+
+colnames(merged_data)
+
+# Select necessary columns 
+merged_data %>% 
+  select(id_number, gender, gonads, crab, shrimp, sediment_rocks, shells, invert_parts, plants_aglae, unknown_mush, fish, eggs, brittle_star, other)
+
+
+# ------ WRANGLE -------- 
+# Change column type 
+merged_data$invert_parts <- as.numeric(merged_data$invert_parts)
+merged_data$fish <- as.numeric(merged_data$fish)
+
+# Make `final_age` a factor 
+age_order <- c("1O", "1T", "2O", "2T", "3O", "3T", "4O", "4T", "5O", "5T", "6O", "6T", "7O", "7T", "8O", "8T", "9O", "9T", "10O", "11T", "12T", "13O")
+
+merged_data$final_age  = factor(merged_data$final_age, levels = age_order)
+```
+
+```{r}
+color_pal <- c("grey70", "#FF6B6B","#FFD93D","#FAEAA8", "#6BCB77", "#059316", "#4D96FF","#48dbe8", "#FFB4B4")
+```
+
+
+Catgeoical Contents of Stomach Findings (%)
+```{r}
+# Wrangle - select and pivot data 
+diets_df <- merged_data %>% 
+  select(crab:brittle_star) %>% 
+  select(-c(unknown_mush)) %>% 
+  pivot_longer(cols = crab:brittle_star, 
+               names_to = 'diet', 
+               values_to = 'measurements')
+
+# Pie plot 
+diets_df %>% 
+  group_by(diet) %>% 
+  summarise(total_weight = sum(measurements, na.rm = TRUE)) %>% 
+  # Plot 
+  ggplot() + 
+  geom_col(aes(x = "", y = total_weight, fill = diet), 
+           color = "white") + 
+  coord_polar(theta = "y") +
+  theme_void() +
+  scale_fill_manual(values = color_pal, 
+                    labels = c('Brittle Star', 'Crab', 'Eggs', 'Fish', 'Invert Parts', 'Plant','Sediment', 'Shells', 'Shrimp')) +
+  labs(title = "Diet Composition", 
+       fill = "Diet") + 
+  theme(plot.title = element_text(size = 16, face = "bold"))
+
+
+```
+
+Diet composition as diet progressives 
+```{r}
+# Wrangle 
+diet_age_df <- merged_data %>% 
+  group_by(final_age) %>% # Fine 
+  summarise(crab = sum(crab, na.rm = TRUE), 
+            shrimp = sum(shrimp, na.rm = TRUE), 
+            sediment_rocks = sum(sediment_rocks, na.rm = TRUE),
+            invert_parts = sum(invert_parts, na.rm = TRUE),
+            plants_aglae = sum(plants_aglae, na.rm = TRUE), 
+            fish = sum(fish, na.rm = TRUE),
+            eggs = sum(eggs, na.rm = TRUE),
+            shells = sum(shells, na.rm = TRUE),
+            brittle_star = sum(brittle_star, na.rm = TRUE), 
+            .groups = "drop") %>% 
+  pivot_longer(cols = crab:brittle_star, 
+               names_to = 'diet', 
+               values_to = 'measurements') %>% 
+  filter(!(final_age == "NA" | final_age == "JG" | final_age == "BD")) # Do not include any fish were age = NA, JG, BD 
+
+
+# ----------- GRAPH ------------ 
+
+# Not proportional
+diet_age_df %>% 
+  ggplot() + 
+  geom_col(aes(x = final_age, y = measurements, fill = diet), 
+           stat = "identity", position = "stack", width = 0.5) + 
+  scale_fill_manual(values = color_pal) +
+  labs(x = "White Grunt Age", 
+       y = "Total Weights (g)", 
+       title = "Age Effect on Diet Composition", 
+       fill = "Diet") + 
+  theme(
+    plot.title = element_text(face = "bold")
+  ) + 
+  theme_light()
+
+
+# Propotional
+diet_age_df %>% 
+  ggplot() + 
+  geom_col(aes(x = final_age, y = measurements, fill = diet), 
+           position = "fill", width = 0.8) + 
+  scale_fill_manual(values = color_pal, 
+                    labels = c('Brittle Star', 'Crab', 'Eggs', 'Fish', 'Invert Parts', 'Plant','Sediment', 'Shells', 'Shrimp')) +
+  labs(x = "White Grunt Age", 
+       y = "Diet Proportions", 
+       title = "Age Effect on Diet Composition", 
+       fill = "Diet") + 
+  theme(
+    plot.title = element_text(face = "bold")
+  ) + 
+  theme_light()
+
+# ----------- Understanding the graph Numbers ------------ 
+
+# Number of fish per age 
+merged_data %>% 
+  filter(!(final_age == "NA" | final_age == "JG" | final_age == "BD")) %>%  # Do not include any fish were age = NA, JG, BD 
+  group_by(final_age) %>% 
+  summarise(age_count = n())
+
+```
+
+Sexual Maturity (gavity) -> dietary preferences 
+```{r}
+# New column: `gravid` as factor with 0 = No gonads, 1 = gonads
+merged_data$gravid <- ifelse(is.na(merged_data$gonads), 0, 1)
+
+merged_data$gravid <- factor(merged_data$gravid, levels = c(0, 1), labels = c("No Gonads", "Gonads"))
+
+
+
+# Wrangle 
+diet_gonads <- merged_data %>% 
+  group_by(gravid) %>% 
+  summarise(crab = sum(crab, na.rm = TRUE), 
+            shrimp = sum(shrimp, na.rm = TRUE), 
+            sediment_rocks = sum(sediment_rocks, na.rm = TRUE),
+            invert_parts = sum(invert_parts, na.rm = TRUE),
+            plants_aglae = sum(plants_aglae, na.rm = TRUE), 
+            fish = sum(fish, na.rm = TRUE),
+            eggs = sum(eggs, na.rm = TRUE),
+            shells = sum(shells, na.rm = TRUE),
+            brittle_star = sum(brittle_star, na.rm = TRUE), 
+            .groups = "drop") %>% 
+   pivot_longer(cols = crab:brittle_star, 
+               names_to = 'diet', 
+               values_to = 'measurements') 
+
+
+# Portional stack Bar chart 
+diet_gonads %>% 
+  ggplot() + 
+  geom_col(aes(x = gravid, y = measurements, fill = diet), 
+           position = "fill", width = 0.8) + 
+  scale_fill_manual(values = color_pal, 
+                    labels = c('Brittle Star', 'Crab', 'Eggs', 'Fish', 'Invert Parts', 'Plant','Sediment', 'Shells', 'Shrimp')) + 
+  theme_minimal() + 
+  labs(x = "Gravid", 
+       y = "Deit Composition", 
+       fill = "Diet", 
+       title = "Gavid vs Deit Composition") 
+
+
+# ------------ PIE CHARTS -----------
+
+# Pie chart gravid wg 
+gravid_diet_plot <- diet_gonads %>% 
+  filter(gravid == "Gonads") %>% 
+  ggplot() + 
+  geom_col(aes(x = "", y = measurements, fill = diet), 
+           position = "fill", 
+           color = "white") + 
+  coord_polar(theta = "y") +
+  scale_fill_manual(values = color_pal, 
+                    labels = c('Brittle Star', 'Crab', 'Eggs', 'Fish', 'Invert Parts', 'Plant','Sediment', 'Shells', 'Shrimp')) + 
+  theme_minimal() + 
+  labs(x = "Gravid", 
+       y = "Deit Composition", 
+       fill = "Diet", 
+       title = "Gravid White Grunt Diet Composition")  + 
+  theme_void() + 
+  theme(plot.title = element_text(face = "bold"))
+
+# pie chart - non gravid wg 
+non_gravid_diet_plot <- diet_gonads %>% 
+  filter(gravid == "No Gonads") %>% 
+  ggplot() + 
+  geom_col(aes(x = "", y = measurements, fill = diet), 
+           position = "fill", 
+           color = "white") + 
+  coord_polar(theta = "y") +
+  scale_fill_manual(values = color_pal, 
+                    labels = c('Brittle Star', 'Crab', 'Eggs', 'Fish', 'Invert Parts', 'Plant','Sediment', 'Shells', 'Shrimp')) + 
+  theme_minimal() + 
+  labs(x = "Gravid", 
+       y = "Deit Composition", 
+       fill = "Diet", 
+       title = "Non-Gravid White Grunt Diet Composition")  + 
+  theme_void() + 
+  theme(plot.title = element_text(face = "bold"))
+
+# Put pie charts together - if want (adjust plots if you want this)
+(non_gravid_diet_plot | gravid_diet_plot)
+```
+
+Gender -> deiart preference 
+Portional bar chart 
+```{r}
+# Fix columsn 
+unique(merged_data$gender)
+
+# Named vector of patterns and replacements
+replacements_map <- c("na" = NA, "NA" = NA, "femlae" = "female", "female" = "Female", "male" = "Male")
+
+# Replace all gender misspelled 
+merged_data$gender <- str_replace_all(merged_data$gender, replacements_map)
+
+unique(merged_data$gender) # All fixed! 
+
+
+
+# Wrangle 
+diet_gender <- merged_data %>% 
+  group_by(gender) %>% 
+  summarise(crab = sum(crab, na.rm = TRUE), 
+            shrimp = sum(shrimp, na.rm = TRUE), 
+            sediment_rocks = sum(sediment_rocks, na.rm = TRUE),
+            invert_parts = sum(invert_parts, na.rm = TRUE),
+            plants_aglae = sum(plants_aglae, na.rm = TRUE), 
+            fish = sum(fish, na.rm = TRUE),
+            eggs = sum(eggs, na.rm = TRUE),
+            shells = sum(shells, na.rm = TRUE),
+            brittle_star = sum(brittle_star, na.rm = TRUE), 
+            .groups = "drop") %>% 
+   pivot_longer(cols = crab:brittle_star, 
+               names_to = 'diet', 
+               values_to = 'measurements') 
+
+
+# Portional stack Bar chart 
+diet_gender %>% 
+  # Filter(! gender == NA) %>% # Remove NAs
+  ggplot() + 
+  geom_col(aes(x = gender, y = measurements, fill = diet), 
+           position = "fill", width = 0.8) +
+  scale_fill_manual(values = color_pal, 
+                    labels = c('Brittle Star', 'Crab', 'Eggs', 'Fish', 'Invert Parts', 'Plant','Sediment', 'Shells', 'Shrimp')) + 
+  theme_minimal() + 
+  labs(x = "Gender", 
+       y = "Deit Composition", 
+       fill = "Diet", 
+       title = "Gender vs Deit Composition") 
+
+```
+
